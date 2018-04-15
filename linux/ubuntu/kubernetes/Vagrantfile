@@ -1,0 +1,71 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
+
+Vagrant.configure("2") do |config|
+# config.vm.network "public_network"
+  config.vm.box = "ubuntu/xenial64"
+
+#  config.vm.provision "docker"
+   config.vm.provision "shell", inline: <<-SHELL
+
+     sudo apt-get update
+     sudo apt-get install -y \
+         apt-transport-https \
+         ca-certificates \
+         curl \
+         software-properties-common
+     sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+     sudo add-apt-repository \
+         "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+         $(lsb_release -cs) \
+         stable"
+     sudo apt-get update && apt-get install -y docker-ce=$(apt-cache madison docker-ce | grep 17.03 | head -1 | awk '{print $3}')
+     sudo systemctl enable docker.service && sudo systemctl start docker.service
+
+
+#     sudo apt-get update
+#     sudo apt-get install -y \
+#         apt-transport-https \
+#         docker.io
+#     sudo systemctl start docker.service && sudo systemctl enable docker.service 
+
+     sudo curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+     sudo echo deb http://apt.kubernetes.io/ kubernetes-xenial main > /etc/apt/sources.list.d/kubernetes.list
+     sudo apt-get update
+     sudo apt-get install -y \
+         kubelet \
+         kubeadm \
+         kubectl
+
+   SHELL
+
+  config.vm.provision "shell", path: "script_hosts.sh"
+  
+  config.vm.provider "virtualbox" do |v|
+    v.memory = "1024"
+    v.cpus = 2
+  end
+
+  config.vm.define "master" do |master|
+    master.vm.hostname = "master"
+    master.vm.network "private_network", ip: "192.168.10.10"
+  end
+
+  config.vm.define "node1" do |node1|
+    node1.vm.hostname = "node1"
+    node1.vm.network "private_network", ip: "192.168.10.11"
+  end
+
+  config.vm.define "node2" do |node2|
+    node2.vm.hostname = "node2"
+    node2.vm.network "private_network", ip: "192.168.10.12"
+  end
+
+end
